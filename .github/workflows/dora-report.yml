@@ -1,0 +1,26 @@
+name: DORA Metrics Report
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+jobs:
+  calculate-dora:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Calculer les métriques
+        uses: stenjo/devops-metrics-action@v1
+        id: dora
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Rapport
+        run: |
+          echo "Fréquence de déploiement : ${{ steps.dora.outputs.deploy-rate }}"
+          echo "Lead Time              : ${{ steps.dora.outputs.lead-time }} h"
+          echo "Taux d'échec            : ${{ steps.dora.outputs.change-failure-rate }} %"
+          echo "MTTR                    : ${{ steps.dora.outputs.mean-time-to-recovery }} h"

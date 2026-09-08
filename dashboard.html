@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>DORA Dashboard — dora-lab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root{
+    --bg1:#0b0f1a; --bg2:#141b2d; --accent:#00e5ff; --accent2:#a855f7;
+    --success:#22c55e; --danger:#ef4444; --text:#e5e7eb;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Segoe UI', sans-serif;
+    background: radial-gradient(circle at 20% 20%, #1b2540 0%, var(--bg1) 60%);
+    color:var(--text);
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  /* Fond animé de particules */
+  #particles{ position:fixed; inset:0; z-index:0; overflow:hidden; }
+  .particle{
+    position:absolute; bottom:-10px; border-radius:50%;
+    background: linear-gradient(180deg, var(--accent), transparent);
+    opacity:.5; animation: rise linear infinite;
+  }
+  @keyframes rise{
+    from{ transform: translateY(0) scale(1); opacity:.6;}
+    to{ transform: translateY(-110vh) scale(.3); opacity:0;}
+  }
+
+  header{
+    text-align:center; padding:50px 20px 20px; position:relative; z-index:1;
+  }
+  header h1{
+    font-size:2.6rem;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation: glow 3s ease-in-out infinite alternate;
+  }
+  @keyframes glow{
+    from{ filter:drop-shadow(0 0 5px rgba(0,229,255,.4)); }
+    to{ filter:drop-shadow(0 0 25px rgba(168,85,247,.6)); }
+  }
+  header p{ color:#9ca3af; margin-top:8px; }
+
+  .container{ max-width:1200px; margin:0 auto; padding:20px; position:relative; z-index:1; }
+
+  /* Cartes KPI */
+  .kpi-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:24px; margin:40px 0;
+  }
+  .kpi-card{
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(12px);
+    border-radius:18px;
+    padding:28px 20px;
+    text-align:center;
+    opacity:0; transform:translateY(30px);
+    transition: all .6s ease;
+    position:relative; overflow:hidden;
+  }
+  .kpi-card::before{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(120deg, transparent, rgba(0,229,255,.15), transparent);
+    transform:translateX(-100%);
+    transition: transform .8s;
+  }
+  .kpi-card:hover::before{ transform:translateX(100%); }
+  .kpi-card.visible{ opacity:1; transform:translateY(0); }
+  .kpi-card:hover{ transform:translateY(-8px) scale(1.03); border-color:var(--accent); box-shadow:0 10px 40px rgba(0,229,255,.25); }
+  .kpi-icon{ font-size:2rem; margin-bottom:10px; }
+  .kpi-value{ font-size:2.4rem; font-weight:700; color:var(--accent); }
+  .kpi-label{ color:#9ca3af; font-size:.9rem; margin-top:6px; letter-spacing:.5px; }
+  .kpi-level{ display:inline-block; margin-top:10px; padding:4px 12px; border-radius:20px; font-size:.75rem; font-weight:600;}
+  .level-elite{ background:rgba(34,197,94,.15); color:var(--success); }
+  .level-high{ background:rgba(0,229,255,.15); color:var(--accent); }
+  .level-medium{ background:rgba(250,204,21,.15); color:#facc15; }
+  .level-low{ background:rgba(239,68,68,.15); color:var(--danger); }
+
+  /* Cartes graphiques */
+  .charts-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(400px,1fr));
+    gap:24px; margin:40px 0;
+  }
+  .chart-card{
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(12px);
+    border-radius:18px; padding:24px;
+    opacity:0; transform:translateY(30px);
+    transition: all .6s ease;
+  }
+  .chart-card.visible{ opacity:1; transform:translateY(0); }
+  .chart-card h3{ margin-bottom:16px; font-weight:500; color:var(--text); }
+
+  /* Timeline incident */
+  .timeline{
+    margin:50px 0; position:relative; padding-left:30px;
+  }
+  .timeline::before{
+    content:''; position:absolute; left:8px; top:0; bottom:0; width:2px;
+    background:linear-gradient(180deg, var(--accent), var(--accent2));
+  }
+  .timeline-item{
+    position:relative; margin-bottom:30px; opacity:0; transform:translateX(-20px);
+    transition:all .5s ease;
+  }
+  .timeline-item.visible{ opacity:1; transform:translateX(0); }
+  .timeline-dot{
+    position:absolute; left:-30px; top:2px; width:16px; height:16px; border-radius:50%;
+    box-shadow:0 0 0 4px rgba(255,255,255,.05);
+  }
+  .dot-fail{ background:var(--danger); animation: pulse 1.5s infinite; }
+  .dot-success{ background:var(--success); }
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(239,68,68,.6);}
+    70%{ box-shadow:0 0 0 10px rgba(239,68,68,0);}
+    100%{ box-shadow:0 0 0 0 rgba(239,68,68,0);}
+  }
+  .timeline-content{
+    background:rgba(255,255,255,.03); padding:14px 18px; border-radius:12px;
+    border:1px solid rgba(255,255,255,.06);
+  }
+  .timeline-content strong{ color:var(--accent); }
+
+  footer{ text-align:center; padding:40px 20px; color:#6b7280; font-size:.85rem; position:relative; z-index:1; }
+</style>
+</head>
+<body>
+
+<div id="particles"></div>
+
+<header>
+  <h1>DORA Metrics Dashboard</h1>
+  <p>dora-lab • mise à jour automatique depuis GitHub</p>
+</header>
+
+<div class="container">
+
+  <div class="kpi-grid" id="kpiGrid">
+    <div class="kpi-card">
+      <div class="kpi-icon">🚀</div>
+      <div class="kpi-value" id="valFreq">0</div>
+      <div class="kpi-label">Fréquence de déploiement / jour</div>
+      <div class="kpi-level" id="levelFreq">--</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">⚡</div>
+      <div class="kpi-value" id="valLead">0</div>
+      <div class="kpi-label">Lead Time moyen (h)</div>
+      <div class="kpi-level" id="levelLead">--</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🛑</div>
+      <div class="kpi-value" id="valCFR">0%</div>
+      <div class="kpi-label">Change Failure Rate</div>
+      <div class="kpi-level" id="levelCFR">--</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🩺</div>
+      <div class="kpi-value" id="valMTTR">0</div>
+      <div class="kpi-label">MTTR (heures)</div>
+      <div class="kpi-level" id="levelMTTR">--</div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>Déploiements par jour</h3>
+      <canvas id="barChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Répartition succès / échecs</h3>
+      <canvas id="pieChart"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:40px;">
+    <h3>Historique des déploiements (chronologie)</h3>
+    <canvas id="lineChart"></canvas>
+  </div>
+
+  <h3 style="margin-bottom:10px;">🔥 Chronologie de l'incident</h3>
+  <div class="timeline" id="timeline">
+    <div class="timeline-item">
+      <div class="timeline-dot dot-fail"></div>
+      <div class="timeline-content">
+        <strong>T0 — Incident détecté</strong><br>
+        Déploiement bloqué : contenu invalide ("ERREUR de version") détecté par le health check automatique.
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot dot-success"></div>
+      <div class="timeline-content">
+        <strong>T1 — Hotfix déployé</strong><br>
+        Correction mergée via PR, health check réussi, service rétabli en production.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>Dashboard généré automatiquement — dora-lab · GitHub Actions + GitHub Pages</footer>
+
+<script>
+// ---------- Particules de fond ----------
+const particlesContainer = document.getElementById('particles');
+for(let i=0;i<40;i++){
+  const p = document.createElement('div');
+  p.className='particle';
+  const size = Math.random()*4+2;
+  p.style.width = size+'px';
+  p.style.height = size+'px';
+  p.style.left = Math.random()*100+'vw';
+  p.style.animationDuration = (8+Math.random()*12)+'s';
+  p.style.animationDelay = (Math.random()*10)+'s';
+  particlesContainer.appendChild(p);
+}
+
+// ---------- Animation compteur ----------
+function animateValue(id, end, suffix='', duration=1200){
+  const el = document.getElementById(id);
+  let start = 0;
+  const range = end - start;
+  const startTime = performance.now();
+  function step(now){
+    const progress = Math.min((now-startTime)/duration, 1);
+    const value = (start + range*progress);
+    el.textContent = (Number.isInteger(end) ? Math.round(value) : value.toFixed(2)) + suffix;
+    if(progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function levelBadge(elId, level){
+  const el = document.getElementById(elId);
+  const map = {
+    "Élite": ["Élite","level-elite"],
+    "Élevé": ["Élevé","level-high"],
+    "Moyen": ["Moyen","level-medium"],
+    "Faible": ["Faible","level-low"]
+  };
+  const [label, cls] = map[level] || ["--","level-medium"];
+  el.textContent = label;
+  el.className = "kpi-level " + cls;
+}
+
+// ---------- Scroll reveal ----------
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); });
+},{threshold:.15});
+document.querySelectorAll('.kpi-card, .chart-card, .timeline-item').forEach(el=>observer.observe(el));
+
+// ---------- Chargement des données réelles ----------
+fetch('./.dora-data/deployments.csv')
+  .then(r => r.text())
+  .then(csv => {
+    const lignes = csv.trim().split('\n').slice(1).map(l=>l.split(','));
+    // Ajout manuel des 2 échecs connus (à adapter avec vos vrais timestamps/SHA)
+    lignes.push(['2026-09-08T08:50:00Z','73182ed','failed']);
+    lignes.push(['2026-09-08T10:05:00Z','7d1d78f','failed']);
+
+    const success = lignes.filter(l=>l[2]==='success').length;
+    const failed  = lignes.filter(l=>l[2]==='failed').length;
+    const total = success + failed;
+    const cfr = total ? (failed/total*100) : 0;
+
+    // Regroupement par jour
+    const parJour = {};
+    lignes.forEach(l=>{
+      const jour = l[0].split('T')[0];
+      parJour[jour] = parJour[jour] || {success:0, failed:0};
+      parJour[jour][l[2]]++;
+    });
+    const jours = Object.keys(parJour).sort();
+
+    // Fréquence = total déploiements / nb de jours couverts
+    const freq = jours.length ? (total/jours.length) : 0;
+
+    // Lead time simulé (secondes entre déploiements successifs, converti en h) — approximation pédagogique
+    const timestamps = lignes.map(l=>new Date(l[0]).getTime()).sort((a,b)=>a-b);
+    let leadTimes = [];
+    for(let i=1;i<timestamps.length;i++){ leadTimes.push((timestamps[i]-timestamps[i-1])/3600000); }
+    const leadAvg = leadTimes.length ? leadTimes.reduce((a,b)=>a+b,0)/leadTimes.length : 0;
+
+    // MTTR = écart entre le run échoué et le run réussi suivant (ici T0/T1 connus manuellement)
+    const t0 = new Date('2026-09-08T10:05:00Z').getTime();
+    const t1 = new Date('2026-09-08T10:11:11Z').getTime();
+    const mttr = (t1-t0)/3600000;
+
+    // KPI
+    animateValue('valFreq', Number(freq.toFixed(2)));
+    animateValue('valLead', Number(leadAvg.toFixed(2)));
+    animateValue('valCFR', Number(cfr.toFixed(0)), '%');
+    animateValue('valMTTR', Number(mttr.toFixed(2)));
+
+    levelBadge('levelFreq', freq>=1 ? "Élite" : freq>=0.14 ? "Élevé" : freq>=0.03 ? "Moyen" : "Faible");
+    levelBadge('levelLead', leadAvg<=1 ? "Élite" : leadAvg<=24 ? "Élevé" : leadAvg<=168 ? "Moyen" : "Faible");
+    levelBadge('levelCFR', cfr<=15 ? "Élite" : cfr<=30 ? "Élevé" : cfr<=45 ? "Moyen" : "Faible");
+    levelBadge('levelMTTR', mttr<=1 ? "Élite" : mttr<=24 ? "Élevé" : mttr<=168 ? "Moyen" : "Faible");
+
+    // ---------- Graphique barres ----------
+    new Chart(document.getElementById('barChart'), {
+      type:'bar',
+      data:{
+        labels: jours,
+        datasets:[
+          {label:'Succès', data: jours.map(j=>parJour[j].success||0), backgroundColor:'#22c55e', borderRadius:6},
+          {label:'Échecs', data: jours.map(j=>parJour[j].failed||0), backgroundColor:'#ef4444', borderRadius:6}
+        ]
+      },
+      options:{
+        responsive:true,
+        animation:{ duration:1500, easing:'easeOutQuart' },
+        plugins:{ legend:{ labels:{ color:'#e5e7eb' } } },
+        scales:{
+          x:{ ticks:{ color:'#9ca3af' }, grid:{ color:'rgba(255,255,255,.05)' } },
+          y:{ ticks:{ color:'#9ca3af' }, grid:{ color:'rgba(255,255,255,.05)' } }
+        }
+      }
+    });
+
+    // ---------- Graphique camembert ----------
+    new Chart(document.getElementById('pieChart'), {
+      type:'doughnut',
+      data:{
+        labels:['Succès','Échecs'],
+        datasets:[{ data:[success, failed], backgroundColor:['#00e5ff','#ef4444'], borderWidth:0 }]
+      },
+      options:{
+        responsive:true,
+        animation:{ animateRotate:true, duration:1500 },
+        plugins:{ legend:{ position:'bottom', labels:{ color:'#e5e7eb' } } }
+      }
+    });
+
+    // ---------- Graphique ligne (timeline déploiements) ----------
+    new Chart(document.getElementById('lineChart'), {
+      type:'line',
+      data:{
+        labels: lignes.map(l=>l[0]),
+        datasets:[{
+          label:'Statut (1=succès, 0=échec)',
+          data: lignes.map(l=>l[2]==='success'?1:0),
+          borderColor:'#a855f7',
+          backgroundColor:'rgba(168,85,247,.2)',
+          fill:true, tension:.3, pointRadius:5,
+          pointBackgroundColor: lignes.map(l=>l[2]==='success'?'#22c55e':'#ef4444')
+        }]
+      },
+      options:{
+        responsive:true,
+        animation:{ duration:1800, easing:'easeOutElastic' },
+        plugins:{ legend:{ labels:{ color:'#e5e7eb' } } },
+        scales:{
+          x:{ ticks:{ color:'#9ca3af' }, grid:{ display:false } },
+          y:{ ticks:{ color:'#9ca3af', stepSize:1 }, grid:{ color:'rgba(255,255,255,.05)' } }
+        }
+      }
+    });
+  })
+  .catch(err=>{
+    console.error('Erreur chargement CSV', err);
+  });
+</script>
+</body>
+</html>

@@ -17,6 +17,28 @@ jobs:
           fetch-depth: 0
 
       - name: Vérification de santé (simulate health check)
+        run: |name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Vérification de santé (simulate health check)
         run: |
           if grep -q "ERREUR" index.html; then
             echo "Health check échoué : contenu invalide détecté"
@@ -36,3 +58,31 @@ jobs:
         with:
           commit_message: "chore(dora): déploiement en prod [skip ci]"
           file_pattern: '.dora-data/*'
+
+      - name: Créer une release de déploiement
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: deploy-${{ github.run_number }}
+          name: "Déploiement #${{ github.run_number }}"
+          body: "Déploiement automatique du commit ${{ github.sha }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            echo "Health check échoué : contenu invalide détecté"
+            exit 1
+          fi
+          echo "Health check OK"
+
+      - name: Log du déploiement
+        run: |
+          mkdir -p .dora-data
+          FICHIER=".dora-data/deployments.csv"
+          if [ ! -f "$FICHIER" ]; then echo "timestamp,commit_sha,status" > "$FICHIER"; fi
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ),${{ github.sha }},success" >> "$FICHIER"
+
+      - name: Sauvegarder le log
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(dora): déploiement en prod [skip ci]"
+          file_pattern: '.dora-data/*'
+          
